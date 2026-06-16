@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,7 @@ class Work:
     episodes: Tuple[Episode, ...] = ()
     source_id: Optional[str] = None
     owner_mid: Optional[str] = None
+    source: Dict[str, Any] = None
 
     def __init__(
         self,
@@ -40,6 +41,7 @@ class Work:
         episodes: Sequence[Episode] = (),
         source_id: Optional[str] = None,
         owner_mid: Optional[str] = None,
+        source: Optional[Dict[str, Any]] = None,
     ) -> None:
         object.__setattr__(self, "work_key", work_key)
         object.__setattr__(self, "kind", kind)
@@ -47,6 +49,7 @@ class Work:
         object.__setattr__(self, "episodes", tuple(episodes))
         object.__setattr__(self, "source_id", source_id)
         object.__setattr__(self, "owner_mid", owner_mid)
+        object.__setattr__(self, "source", dict(source or {}))
 
 
 @dataclass(frozen=True)

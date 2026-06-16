@@ -10,7 +10,11 @@ class Resolver:
     def _video(self,bvid):
         data=self.client.get_json("https://api.bilibili.com/x/web-interface/view",{"bvid":bvid}); pages=data.get("pages") or [{"cid":data["cid"],"page":1,"part":data["title"]}]; key="video:"+data["bvid"]
         episodes=tuple(Episode("cid:{}".format(p["cid"]),p.get("page",i),p.get("part") or "P{}".format(i),data["bvid"],data["aid"],p["cid"],work_key=key) for i,p in enumerate(pages,1))
-        return Work(key,InputKind.VIDEO,data["title"],episodes,data["bvid"])
+        source={
+            "bvid": data.get("bvid"), "aid": data.get("aid"), "title": data.get("title"),
+            "desc": data.get("desc", ""), "owner": data.get("owner") or {}, "stat": data.get("stat") or {},
+        }
+        return Work(key,InputKind.VIDEO,data["title"],episodes,data["bvid"],source=source)
     def _collection(self,mid,season_id):
         archives=[]; page=1; data={}
         while True:

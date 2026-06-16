@@ -78,7 +78,7 @@ def main(argv=None):
 
         if args.restart:
             repository.restart_work(work.work_key)
-        repository.upsert_work(work.work_key, work.kind, work.title)
+        repository.upsert_work(work.work_key, work.kind, work.title, source=work.source)
         for episode in work.episodes:
             repository.upsert_episode(
                 work.work_key,

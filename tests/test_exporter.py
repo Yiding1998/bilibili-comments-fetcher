@@ -9,6 +9,7 @@ from bili_stats.exporter import (
     EXCEL_CELL_LIMIT,
     build_comment_user_rows,
     build_danmaku_user_rows,
+    build_video_info_rows,
     export,
 )
 from bili_stats.models import Comment, Danmaku
@@ -54,6 +55,27 @@ class AggregationTest(unittest.TestCase):
         self.assertEqual([row["发送者标识"] for row in result], ["a", "(未知)", "b"])
         self.assertEqual(result[0]["弹幕次数"], 2)
         self.assertEqual(result[0]["弹幕内容"], "same\nsame")
+
+    def test_video_info_prefers_source_metadata_and_falls_back_to_local_counts(self):
+        work = {
+            "title": "Demo",
+            "source_json": (
+                "{\"bvid\":\"BV1\",\"aid\":1,\"desc\":\"intro\","
+                "\"owner\":{\"mid\":42,\"name\":\"UP\"},"
+                "\"stat\":{\"view\":100,\"like\":20,\"coin\":3,\"favorite\":4,"
+                "\"share\":5,\"danmaku\":6,\"reply\":7}}"
+            ),
+        }
+
+        result = build_video_info_rows(work, [{"aid": 1, "bvid": "BV1"}], [{}], [{}, {}])
+
+        self.assertEqual(result[0]["视频标题"], "Demo")
+        self.assertEqual(result[0]["作者名称"], "UP")
+        self.assertEqual(result[0]["播放量"], 100)
+        self.assertEqual(result[0]["点赞数"], 20)
+        self.assertEqual(result[0]["弹幕数"], 6)
+        self.assertEqual(result[0]["评论数"], 7)
+        self.assertEqual(result[0]["视频简介"], "intro")
 
     def test_comment_users_group_by_mid_and_use_latest_name(self):
         rows = [
@@ -107,6 +129,8 @@ class ExportIntegrationTest(unittest.TestCase):
             self.assertEqual(ranking.loc[0, "发送者哈希"], "hash")
             comments = pd.read_excel(output / "评论用户排行.xlsx")
             self.assertEqual(comments.loc[0, "评论内容"], "beforeafter")
+            info = pd.read_excel(output / "视频信息.xlsx")
+            self.assertEqual(info.loc[0, "视频标题"], "Demo")
             repo.close()
 
     def test_export_reports_each_created_workbook(self):
@@ -121,8 +145,8 @@ class ExportIntegrationTest(unittest.TestCase):
 
             self.assertEqual(len(progress.tasks), 1)
             self.assertEqual(progress.tasks[0].description, "导出 Excel")
-            self.assertEqual(progress.tasks[0].total, 10)
-            self.assertEqual(progress.tasks[0].current, 10)
+            self.assertEqual(progress.tasks[0].total, 11)
+            self.assertEqual(progress.tasks[0].current, 11)
             repo.close()
 
 

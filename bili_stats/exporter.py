@@ -1,3 +1,4 @@
+import json
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -59,6 +60,36 @@ def build_comment_user_rows(rows):
     return result
 
 
+def build_video_info_rows(work, episodes, danmaku_rows, comment_rows):
+    try:
+        source = json.loads(work.get("source_json") or "{}")
+    except (TypeError, ValueError):
+        source = {}
+    stat = source.get("stat") or {}
+    owner = source.get("owner") or {}
+    first_episode = episodes[0] if episodes else {}
+
+    def value(mapping, key, fallback=""):
+        result = mapping.get(key)
+        return fallback if result is None else result
+
+    return [{
+        "视频标题": value(source, "title", work.get("title", "")),
+        "BVID": value(source, "bvid", first_episode.get("bvid", "")),
+        "AID": value(source, "aid", first_episode.get("aid", "")),
+        "作者MID": value(owner, "mid"),
+        "作者名称": value(owner, "name"),
+        "作者头像": value(owner, "face"),
+        "播放量": value(stat, "view"),
+        "点赞数": value(stat, "like"),
+        "投币数": value(stat, "coin"),
+        "收藏量": value(stat, "favorite"),
+        "转发数": value(stat, "share"),
+        "弹幕数": value(stat, "danmaku", len(danmaku_rows)),
+        "评论数": value(stat, "reply", len(comment_rows)),
+        "视频简介": value(source, "desc"),
+    }]
+
 def safe_name(value):
     value = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", str(value)).strip(" .")
     return value[:120] or "未命名"
@@ -81,7 +112,7 @@ def export(repository, work_key, output_root, progress=None):
     all_danmaku = repository.list_danmaku(work_key)
     comments = repository.list_comments(work_key)
     reporter = progress or NULL_PROGRESS
-    total_files = len(episodes) * 5 + 5
+    total_files = len(episodes) * 5 + 6
 
     with reporter.task("导出 Excel", total=total_files, unit="文件") as task:
         def write(path, rows):
@@ -97,6 +128,7 @@ def export(repository, work_key, output_root, progress=None):
             write(folder / "弹幕用户排行.xlsx", build_danmaku_user_rows(rows))
             write(folder / "完整评论.xlsx", comments)
             write(folder / "评论用户统计.xlsx", [{"用户名": key, "评论次数": value} for key, value in Counter(row["user_name"] for row in comments).most_common()])
+        write(root / "视频信息.xlsx", build_video_info_rows(work, episodes, all_danmaku, comments))
         write(root / "全局弹幕统计.xlsx", [{"弹幕内容": key, "出现次数": value} for key, value in Counter(row["content"] for row in all_danmaku).most_common()])
         write(root / "全局弹幕用户排行.xlsx", build_danmaku_user_rows(all_danmaku))
         write(root / "全局评论统计.xlsx", [{"用户名": key, "评论次数": value} for key, value in Counter(row["user_name"] for row in comments).most_common()])
