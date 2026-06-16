@@ -1,5 +1,5 @@
 import json
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .models import Comment
 from .progress import NULL_PROGRESS
@@ -56,7 +56,9 @@ class CommentCollector:
         roots.update(self.repository.list_pending_child_roots(work_key, aid))
         with self.progress_reporter.task("子评论 aid={}".format(aid), total=len(roots), unit="根") as child_task:
             with ThreadPoolExecutor(max_workers=self.client.limiter.max_concurrency) as pool:
-                for _ in pool.map(lambda root: self._children(work_key, aid, root), roots):
+                futures = [pool.submit(self._children, work_key, aid, root) for root in roots]
+                for future in as_completed(futures):
+                    future.result()
                     child_task.update()
         return self.repository.count_comments(work_key)
 
